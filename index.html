@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>نظام جدول الحصص المتقدم</title>
+  <!-- Bootstrap 5 RTL -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary-color: #2A4B7C;
+      --secondary-color: #5D93E1;
+      --break-color: #ffeeba;
+    }
+    body { background: #f8f9fa; min-height:100vh; }
+    .navbar { background: var(--primary-color) !important; }
+    .main-card { border-radius:1.5rem; box-shadow:0 10px 30px rgba(0,0,0,0.1); border:none; }
+    .subject-card { background:#fff; margin-bottom:1rem; transition:.2s; }
+    .subject-card:hover { transform:translateY(-3px); }
+    .time-table { width:100%; border-collapse:collapse; }
+    .time-table th { background:var(--primary-color); color:#fff; padding:.75rem; }
+    .time-table td { background:#fff; padding:.5rem; border:1px solid #dee2e6; vertical-align:top; height:60px; position:relative; }
+    .break-cell { background:var(--break-color)!important; text-align:center; font-weight:bold; }
+    .session-block { background:#e3f2fd; border-radius:4px; padding:4px; height:100%; }
+    .double-session { border-right:3px solid #81c784; }
+    .teacher-badge { position:absolute; bottom:2px; left:2px; font-size:.75rem; background:var(--secondary-color); color:#fff; padding:2px 6px; border-radius:1rem; }
+    .time-label { font-weight:500; color:var(--primary-color); }
+    .actions button { margin-left:.5rem; }
+    .responsive-scroll { overflow-x:auto; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#">
+        <i class="fas fa-calendar-alt me-2"></i>نظام جدول الحصص
+      </a>
+    </div>
+  </nav>
+
+  <div class="container py-5">
+    <!-- إعدادات الجدول -->
+    <div class="main-card card mb-4">
+      <div class="card-body p-4">
+        <h4 class="mb-4 text-center text-primary">إعدادات الجدول</h4>
+        <div class="row g-3 mb-3">
+          <div class="col-md-2">
+            <label class="form-label">عدد المواد</label>
+            <input type="number" id="subjectCount" class="form-control" min="1" value="5"/>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">أيام العمل</label>
+            <select id="daysCount" class="form-select">
+              <option value="5">5 أيام (الأحد - الخميس)</option>
+              <option value="6">6 أيام (السبت - الخميس)</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">بداية اليوم</label>
+            <input type="time" id="dayStart" class="form-control" value="08:00"/>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">نهاية اليوم</label>
+            <input type="time" id="dayEnd" class="form-control" value="14:00"/>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">مدة الحصة</label>
+            <input type="number" id="sessionDuration" class="form-control" min="30" value="45"/>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">بدء الفسحة</label>
+            <input type="time" id="breakStart" class="form-control" value="11:30"/>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">نهاية الفسحة</label>
+            <input type="time" id="breakEnd" class="form-control" value="12:00"/>
+          </div>
+        </div>
+
+        <button id="createSubjectsBtn" class="btn btn-outline-primary w-100 mb-3">
+          إنشاء حقول المواد
+        </button>
+
+        <!-- إدارة المدرسين -->
+        <div class="mb-4">
+          <h6 class="fw-bold mb-2">إدارة المدرسين</h6>
+          <div class="input-group mb-2">
+            <input type="text" id="newTeacher" class="form-control" placeholder="اسم المدرس الجديد"/>
+            <button id="addTeacher" class="btn btn-secondary">
+              <i class="fas fa-plus me-2"></i>إضافة
+            </button>
+          </div>
+          <div id="teachersList" class="d-flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- حاوية حقول المواد -->
+        <div id="subjectsContainer" class="mb-4"></div>
+
+        <div class="text-center">
+          <button id="generateBtn" class="btn btn-lg btn-success px-5">
+            <i class="fas fa-magic me-2"></i>توليد الجدول
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- نتائج الجدول -->
+    <div id="resultSection" class="main-card card d-none">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-primary">الجدول الزمني</h4>
+          <div class="actions">
+            <button id="regenerateBtn" class="btn btn-outline-warning">
+              <i class="fas fa-redo me-2"></i>إعادة توليد
+            </button>
+            <button id="exportPdf" class="btn btn-outline-primary">
+              <i class="fas fa-file-pdf me-2"></i>PDF
+            </button>
+            <button id="exportImage" class="btn btn-outline-success ms-2">
+              <i class="fas fa-image me-2"></i>صورة
+            </button>
+          </div>
+        </div>
+        <div class="responsive-scroll">
+          <table id="timetable" class="time-table"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- مكتبات -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    const state = {
+      teachers: new Set(),
+      subjects: [],
+      allDays: ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'],
+      timetable: []
+    };
+
+    // إدارة المدرسين
+    document.getElementById('addTeacher').addEventListener('click', () => {
+      const name = document.getElementById('newTeacher').value.trim();
+      if (name && !state.teachers.has(name)) {
+        state.teachers.add(name);
+        document.getElementById('newTeacher').value = '';
+        renderTeachers();
+      }
+    });
+    function renderTeachers() {
+      const list = document.getElementById('teachersList');
+      list.innerHTML = '';
+      state.teachers.forEach(t => {
+        const span = document.createElement('span');
+        span.className = 'badge bg-primary';
+        span.innerHTML = `${t} <button class="btn-close btn-close-white btn-sm ms-2" data-t="${t}"></button>`;
+        list.appendChild(span);
+      });
+      document.querySelectorAll('[data-t]').forEach(btn => {
+        btn.onclick = () => {
+          state.teachers.delete(btn.dataset.t);
+          renderTeachers();
+        }
+      });
+    }
+
+    // إنشاء حقول المواد
+    document.getElementById('createSubjectsBtn').addEventListener('click', () => {
+      const cnt = +document.getElementById('subjectCount').value;
+      const container = document.getElementById('subjectsContainer');
+      container.innerHTML = '';
+      const teachers = [...state.teachers];
+      for (let i = 0; i < cnt; i++) {
+        const card = document.createElement('div');
+        card.className = 'card p-3 mb-3 subject-card';
+        card.innerHTML = `
+          <div class="row g-3">
+            <div class="col-md-4"><input class="form-control subject-name" placeholder="اسم المادة"></div>
+            <div class="col-md-2"><input type="number" class="form-control sessions-count" min="1" value="1"></div>
+            <div class="col-md-3">
+              <select class="form-select teacher-select">
+                <option>بدون مدرس</option>
+                ${teachers.map(t=>`<option>${t}</option>`).join('')}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select priority">
+                <option value="any">أي وقت</option>
+                <option value="morning">صباح</option>
+                <option value="afternoon">مساء</option>
+              </select>
+            </div>
+          </div>`;
+        container.appendChild(card);
+      }
+    });
+
+    // توليد الجدول
+    document.getElementById('generateBtn').addEventListener('click', () => {
+      collectSubjects();
+      const { slots, breakSlots, days } = prepareSlotsAndDays();
+      initTimetable(days.length, slots.length, breakSlots, slots);
+      distributeSessions(slots, breakSlots, days.length);
+      renderTable(days, slots, breakSlots);
+      document.getElementById('resultSection').classList.remove('d-none');
+    });
+
+    function collectSubjects() {
+      state.subjects = [...document.querySelectorAll('.subject-card')].map(c => ({
+        name: c.querySelector('.subject-name').value.trim() || 'غير محدد',
+        total: +c.querySelector('.sessions-count').value,
+        remaining: +c.querySelector('.sessions-count').value,
+        teacher: c.querySelector('.teacher-select').value,
+        pr: c.querySelector('.priority').value
+      }));
+    }
+
+    function prepareSlotsAndDays() {
+      const start = document.getElementById('dayStart').value;
+      const end = document.getElementById('dayEnd').value;
+      const duration = +document.getElementById('sessionDuration').value;
+      const breakStartVal = document.getElementById('breakStart').value;
+      const breakEndVal = document.getElementById('breakEnd').value;
+      const daysCountVal = +document.getElementById('daysCount').value;
+      let days;
+      if (daysCountVal === 5) {
+        // الأحد - الخميس
+        days = state.allDays.slice(1, 6);
+      } else {
+        // السبت - الخميس
+        days = state.allDays.slice(0, 6);
+      }
+      const slots = generateTimeSlots(start, end, duration);
+      const breakSlots = slots.filter(t => t >= breakStartVal && t < breakEndVal);
+      return { slots, breakSlots, days };
+    }
+
+    function initTimetable(dCnt, sCnt, breakSlots, slots) {
+      state.timetable = Array.from({ length: dCnt }, () => Array(sCnt).fill(null));
+      state.timetable.forEach(row => {
+        breakSlots.forEach(bs => {
+          const idx = slots.indexOf(bs);
+          if (idx >= 0) row[idx] = 'break';
+        });
+      });
+    }
+
+    function distributeSessions(slots, breakSlots, daysCountVal) {
+      // جلسات مزدوجة ثم منفردة
+      state.subjects.forEach(sub => {
+        placeDoubleSessions(sub, slots, breakSlots, daysCountVal);
+        placeRemaining(sub, slots, breakSlots, daysCountVal);
+      });
+    }
+
+    function placeDoubleSessions(sub, slots, breakSlots, daysCountVal) {
+      state.allDays.slice(0, daysCountVal).forEach((_, di) => {
+        if (sub.remaining < 2) return;
+        for (let si = 0; si < slots.length - 1; si++) {
+          if (!state.timetable[di][si] && !state.timetable[di][si+1]
+              && !breakSlots.includes(slots[si])
+              && !breakSlots.includes(slots[si+1])) {
+            state.timetable[di][si] = sub;
+            state.timetable[di][si+1] = sub;
+            sub.remaining -= 2;
+            break;
+          }
+        }
+      });
+    }
+
+    function placeRemaining(sub, slots, breakSlots, daysCountVal) {
+      while (sub.remaining > 0) {
+        const order = Array.from({ length: daysCountVal }, (_, i) => i).sort(() => Math.random() - 0.5);
+        let placed = false;
+        for (let di of order) {
+          const idxs = slots.map((t,i) => i)
+            .filter(i => !state.timetable[di][i] && !breakSlots.includes(slots[i]));
+          idxs.sort((a,b) => sub.pr==='morning' ? a-b : sub.pr==='afternoon' ? b-a : Math.random()-0.5);
+          if (idxs.length) {
+            state.timetable[di][idxs[0]] = sub;
+            sub.remaining--;
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) break;
+      }
+    }
+
+    function generateTimeSlots(start,end,du) {
+      const arr=[]; let [h,m]=start.split(':').map(Number);
+      const [he,me]=end.split(':').map(Number);
+      while(h<he||(h===he&&m<me)) {
+        arr.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+        m += du; if(m>=60){h++;m-=60;}
+      }
+      return arr;
+    }
+
+    function renderTable(days,slots,breakSlots) {
+      let html = `<thead><tr><th></th>${slots.map(t=>`<th>${t}</th>`).join('')}</tr></thead><tbody>`;
+      days.forEach((d,di)=>{
+        html += `<tr><td>${d}</td>`;
+        slots.forEach((t,i)=>{
+          const cell = state.timetable[di][i];
+          if (cell==='break') html += `<td class="break-cell">فسحة</td>`;
+          else if (cell) {
+            html += `<td><div class="session-block${i+1<slots.length&&state.timetable[di][i+1]===cell?' double-session':''}">`+
+                     `${cell.name}`+
+                     `${cell.teacher?`<span class="teacher-badge">${cell.teacher}</span>`:''}`+
+                   `</div></td>`;
+          } else html += '<td></td>';
+        });
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      document.getElementById('timetable').innerHTML = html;
+    }
+
+    // أزرار إضافية
+    document.getElementById('regenerateBtn').addEventListener('click', () => document.getElementById('generateBtn').click());
+    document.getElementById('exportImage').addEventListener('click', ()=> html2canvas(document.getElementById('timetable')).then(c=> {
+      const a=document.createElement('a'); a.download='timetable.png'; a.href=c.toDataURL(); a.click();
+    }));
+    document.getElementById('exportPdf').addEventListener('click', ()=> html2canvas(document.getElementById('timetable')).then(c=>{
+      const img=c.toDataURL('image/png'),{ jsPDF }=window.jspdf;
+      const pdf=new jsPDF('l','mm','a4'); const w=pdf.internal.pageSize.getWidth(), h=(c.height*w)/c.width;
+      pdf.addImage(img,'PNG',10,10,w,h); pdf.save('timetable.pdf');
+    }));
+  </script>
+</body>
+</html>
